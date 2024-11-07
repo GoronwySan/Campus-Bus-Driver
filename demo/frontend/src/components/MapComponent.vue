@@ -140,10 +140,10 @@ const updateLocation = (driverId) => {
 
 onMounted(() => {
   window._AMapSecurityConfig = {
-    securityJsCode: "bc6f966d4758af8f40837aa7560ada04",
+    securityJsCode: "", //安全密钥
   };
   AMapLoader.load({
-    key: "b97c0e27127e8ce02bbba2c585de79b1", // Web端开发者Key
+    key: "", // Web端开发者Key
     version: "2.0",
     plugins: ["AMap.Scale"],
   })
