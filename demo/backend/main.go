@@ -18,7 +18,7 @@ type GPSData struct {
 // CORS 中间件
 func enableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "https://localhost:8081") // 设置允许的域
+		w.Header().Set("Access-Control-Allow-Origin", "https://localhost:8080") // 设置允许的域
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")    // 允许的请求方法
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")          // 允许的请求头
 
@@ -104,6 +104,6 @@ func main() {
 	corsHandler := enableCORS(mux)
 
 	// 启动服务器
-	fmt.Println("服务器正在运行于 http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", corsHandler))
+	fmt.Println("服务器正在运行于 http://localhost:3456")
+	log.Fatal(http.ListenAndServe(":3456", corsHandler))
 }
