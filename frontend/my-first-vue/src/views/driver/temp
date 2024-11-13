@@ -1,0 +1,230 @@
+<script setup>
+    import { ref, onMounted, onUnmounted } from 'vue';
+    import driver_Info from './driver_Info.vue';
+    import AMapLoader from '@amap/amap-jsapi-loader';
+
+
+    let map = null;
+    let AMap = null;
+    let socket = null;
+    var dInfoVisible = ref(false);
+
+    const dInfoContent = ref('测试弹窗');
+    const statusMessage = ref('');
+    const resultMessage = ref('');
+    const markers = {}; // 用来保存其他客户端的标记
+
+    // 自己的位置信息
+    function onComplete(data) {
+        statusMessage.value = '定位成功';
+        const resultArr = [];
+        resultArr.push(`定位结果：${data.position}`);
+        resultArr.push(`定位类别：${data.location_type}`);
+        if (data.accuracy) {
+            resultArr.push(`精度：${data.accuracy} 米`);
+        }
+        resultArr.push(`是否经过偏移：${data.isConverted ? '是' : '否'}`);
+        resultMessage.value = resultArr.join('<br>');
+
+        // 将位置信息发送给服务器
+        const positionData = {
+            latitude: data.position.lat,
+            longitude: data.position.lng,
+            clientId: "my-client-id" // 发送时区分自己的客户端ID
+        };
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(positionData));
+        }
+    }
+
+    function onError(data) {
+        statusMessage.value = '定位失败';
+        resultMessage.value = `失败原因排查信息: ${data.message}<br>浏览器返回信息：${data.originMessage}`;
+    }
+
+    function initializeWebSocket() {
+        // 连接 WebSocket 服务器
+        socket = new WebSocket('ws://localhost:8083');
+        socket.onopen = () => {
+            console.log('WebSocket连接已建立');
+        };
+
+        socket.onmessage = (event) => {
+            try {
+                const locationData = JSON.parse(event.data);
+                updateMarker(locationData);
+            } catch (error) {
+                console.error('解析位置信息出错:', error);
+            }
+        };
+
+        socket.onclose = () => {
+            console.log('WebSocket连接已关闭');
+        };
+    }
+
+    function updateMarker(locationData) {
+        const { latitude, longitude, clientId } = locationData;
+
+        if (!markers[clientId]) {
+            // 创建新的标记
+            markers[clientId] = new AMap.Marker({
+                position: [longitude, latitude],
+                map: map,
+                content: `<div style="color: ${clientId === "my-client-id" ? 'red' : 'blue'};">${clientId === "my-client-id" ? '我' : '客户端'}</div>`,
+            });
+        } else {
+            // 更新标记的位置
+            markers[clientId].setPosition([longitude, latitude]);
+        }
+    }
+
+    function closeDInfo() {
+        dInfoVisible.value = false;
+    }
+
+    function showDriverInfo() {
+        dInfoVisible.value = true;
+    }
+
+    onMounted(() => {
+        window._AMapSecurityConfig = {
+            securityJsCode: 'a138aac0c6ccb5693116663e3361b429',
+        };
+        AMapLoader.load({
+            key: '9e0dfefc829e69af5324533400185185',
+            version: '2.0',
+            plugins: ['AMap.Geolocation'],
+        })
+            .then((AMap) => {
+                map = new AMap.Map('container', {
+                    resizeEnable: true,
+                });
+
+                const geolocation = new AMap.Geolocation({
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    position: 'RB',
+                    offset: [10, 20],
+                    zoomToAccuracy: true,
+                });
+
+                map.addControl(geolocation);
+
+                // 获取并发送位置信息
+                geolocation.getCurrentPosition((status, result) => {
+                    if (status === 'complete') {
+                        onComplete(result);
+                    } else {
+                        onError(result);
+                    }
+                });
+
+                // 初始化 WebSocket 连接
+                initializeWebSocket();
+            })
+            .catch((e) => {
+                console.error('加载高德地图失败', e);
+            });
+    });
+
+    onUnmounted(() => {
+        map?.destroy();
+        if (socket) {
+            socket.close();
+        }
+    });
+</script>
+
+<template>
+    <div class="page-container">
+        <h1 class="page-title">欢迎来到司机页！</h1>
+        <div id="container" class="map-container">
+            <div class="info-container">
+                <h4>{{ statusMessage }}</h4>
+                <hr />
+                <p v-html="resultMessage"></p>
+                <hr />
+                <button @click="showDriverInfo" class="showDriverInfoButton">我的</button>
+                <driver_Info :visible="dInfoVisible" :content="dInfoContent" @close="closeDInfo" />
+            </div>
+        </div>
+    </div>
+</template>
+
+<style scoped>
+    .showDriverInfoButton {
+        position: absolute;
+        top: 20%;
+        left: 85%;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+
+        text-align: center;
+        background: rgba(113, 65, 168, 0.5);
+        color: floralwhite;
+        line-height: 52px;
+        cursor: pointer;
+        font-size: 14px;
+        user-select: none;
+        transform: translate(-50%, -50%);
+    }
+
+    .page-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+        background-color: #f3f4f6;
+        min-height: 100vh;
+    }
+
+    .page-title {
+        color: #4a4a4a;
+        font-size: 24px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+
+    .map-container {
+        position: relative;
+        height: 700px;
+        width: 100%;
+        max-width: 800px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+
+    .info-container {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 260px;
+        background-color: #ffffff;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        color: #333;
+        z-index: 10;
+    }
+
+    .info-container h4 {
+        color: #008a6c;
+        font-weight: 600;
+    }
+
+    .info-container p {
+        color: #666;
+        line-height: 1.6;
+    }
+
+    @media (min-width: 1024px) {
+        .map-container {
+            height: 600px;
+        }
+    }
+</style>
