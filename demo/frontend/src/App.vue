@@ -24,6 +24,11 @@
         </ErrorBoundary>
       </div>
     </div>
+    <RouteEditor
+      :polylineEditor="polylineEditor"
+      :polylines="polylines"
+      @remove-polyline="removePolyline"
+    />
     <!-- 底部栏 -->
     <div class="footer-bar">
       <div class="footer-buttons">

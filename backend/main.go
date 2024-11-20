@@ -22,12 +22,12 @@ type ApiResponse struct {
 	Data    string `json:"data,omitempty"`
 }
 
-// GPSData 结构体，用于接收前端的 GPS 数据
-type GPSData struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Timestamp string  `json:"timestamp"` // 或 time.Time, 取决于数据格式
-}
+// // GPSData 结构体，用于接收前端的 GPS 数据
+// type GPSData struct {
+// 	Latitude  float64 `json:"latitude"`
+// 	Longitude float64 `json:"longitude"`
+// 	Timestamp string  `json:"timestamp"` // 或 time.Time, 取决于数据格式
+// }
 
 // CORS 中间件
 func enableCORS(next http.Handler) http.Handler {
@@ -109,37 +109,41 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleGPSData 处理接收 GPS 数据的 POST 请求
-func handleGPSData(w http.ResponseWriter, r *http.Request) {
-	// 设置 CORS 响应头
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+// func handleGPSData(w http.ResponseWriter, r *http.Request) {
+// 	// 设置 CORS 响应头
+// 	w.Header().Set("Access-Control-Allow-Origin", "*")
+// 	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET")
+// 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
-	// 如果是预检请求，直接返回状态 200
-	if r.Method == http.MethodOptions {
-		w.WriteHeader(http.StatusOK)
-		return
-	}
+// 	// 如果是预检请求，直接返回状态 200
+// 	if r.Method == http.MethodOptions {
+// 		w.WriteHeader(http.StatusOK)
+// 		return
+// 	}
 
-	// 仅支持 POST 请求
-	if r.Method != http.MethodPost {
-		http.Error(w, "仅支持 POST 请求", http.StatusMethodNotAllowed)
-		return
-	}
+// 	// 仅支持 POST 请求
+// 	if r.Method != http.MethodPost {
+// 		http.Error(w, "仅支持 POST 请求", http.StatusMethodNotAllowed)
+// 		return
+// 	}
 
-	var data GPSData
-	err := json.NewDecoder(r.Body).Decode(&data)
-	if err != nil {
-		log.Printf("请求数据解析错误: %v\n", err)
-		http.Error(w, "请求数据格式错误", http.StatusBadRequest)
-		return
-	}
+// 	var data GPSData
+// 	err := json.NewDecoder(r.Body).Decode(&data)
+// 	if err != nil {
+// 		log.Printf("请求数据解析错误: %v\n", err)
+// 		http.Error(w, "请求数据格式错误", http.StatusBadRequest)
+// 		return
+// 	}
 
-	// fmt.Printf("接收到的 GPS 数据：纬度 %.6f，经度 %.6f，时间戳 %s\n", data.Latitude, data.Longitude, data.Timestamp)
+// 	// fmt.Printf("接收到的 GPS 数据：纬度 %.6f，经度 %.6f，时间戳 %s\n", data.Latitude, data.Longitude, data.Timestamp)
 
-	response := map[string]string{"message": "GPS 数据接收成功"}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+// 	response := map[string]string{"message": "GPS 数据接收成功"}
+// 	w.Header().Set("Content-Type", "application/json")
+// 	json.NewEncoder(w).Encode(response)
+// }
+
+func test() {
+
 }
 
 func main() {
@@ -158,7 +162,7 @@ func main() {
 	mux.HandleFunc("/driverShift/end", driverShift.HandleShiftEnd)      // 处理下班信息
 
 	// 设置路由，接收 GPS 数据的端点
-	mux.HandleFunc("/api/gps", handleGPSData) // 接收 GPS 数据
+	// mux.HandleFunc("/api/gps", handleGPSData) // 接收 GPS 数据
 	mux.HandleFunc("/createDriver", func(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get("id")
 		if id == "" {

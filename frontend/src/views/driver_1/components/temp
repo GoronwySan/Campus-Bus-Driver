@@ -1,4 +1,12 @@
 <template>
+  <div class="page-container">
+    <div id="container" class="map-container">
+      <div class="info-container">
+        <button @click="showDriverInfo" class="showDriverInfoButton">我的</button>
+        <driver_Info :visible="dInfoVisible" :content="dInfoContent" @close="closeDInfo" />
+      </div>
+    </div>
+  </div>
   <div id="app">
     <div id="container"></div>
     <!-- 地图外层容器 -->
@@ -14,6 +22,13 @@
       <!-- 地图容器 -->
       <div id="map-container"></div>
     </div>
+    <!-- 管理员的功能 -->
+    <RouteEditor
+      :polylineEditor="polylineEditor"
+      :polylines="polylines"
+      @add-polyline="addPolyline"
+      @remove-polyline="removePolyline"
+    />
 
     <!-- 输入功能卡片 -->
     <div class="input-card" style="width: 200px">
@@ -24,6 +39,7 @@
       <button class="btn" @click="toggleStations" style="margin-bottom: 5px">
         {{ stationsVisible ? '隐藏站点' : '显示站点' }}
       </button>
+
       <div v-if="editingNewRoute" style="margin-left: 10px">
         <button class="btn" @click="endEditing(false)" style="margin-bottom: 5px">结束(不保存)</button>
         <button class="btn" @click="endEditing(true)" style="margin-bottom: 5px">结束(保存到JSON)</button>
@@ -44,10 +60,10 @@
 <script>
 import AMapLoader from "@amap/amap-jsapi-loader";
 import busStationData from "@/assets/bus_station_data.json";
-import VehicleStatusToggle from "@/components/VehicleStatusToggle.vue";
-import ErrorBoundary from "@/components/ErrorBoundary.vue";
-
-import VehicleForm from "@/components/VehicleForm.vue";
+import VehicleStatusToggle from "@/views/components/VehicleStatusToggle.vue";
+import ErrorBoundary from "@/views/components/ErrorBoundary.vue";
+import RouteEditor from "@/views/components/RouteEditor.vue";
+import VehicleForm from "@/views/components/VehicleForm.vue";
 
 /* global AMap */
 
@@ -57,6 +73,7 @@ export default {
     VehicleStatusToggle,
     ErrorBoundary,
     VehicleForm,
+    RouteEditor,
   },
   data() {
     return {
@@ -238,6 +255,17 @@ export default {
         statusDisplay.innerText = `状态：${status === "normal" ? "正常运营" : "试通行"}`;
       }
     },
+    // 管理员的功能
+    addPolyline(newPolyline) {
+      this.polylines.push(newPolyline); // 添加新路线
+    },
+    removePolyline(polyline) {
+      const index = this.polylines.indexOf(polyline);
+      if (index > -1) {
+        this.polylines.splice(index, 1); // 移除指定的路线
+      }
+    },
+
     /** 更新位置 */
     updateLocation(driverId) {
       if (navigator.geolocation) {
@@ -266,7 +294,7 @@ export default {
     },
       // 发送位置信息到后端
     sendLocationToBackend(driverId, longitude, latitude) {
-      fetch("http://localhost:3456/updateLocation", {
+      fetch("http://localhost:8080/updateLocation", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -283,14 +311,21 @@ export default {
         .then((data) => console.log("服务器响应:", data))
         .catch((error) => console.error("请求错误:", error));
     },
+
     // 获取驾驶员数据
     async fetchDrivers() {
       try {
-        const response = await fetch("http://localhost:3456/drivers");
+        const response = await fetch("http://localhost:8080/drivers");
         if (!response.ok) {
           throw new Error("网络请求失败");
         }
         this.drivers = await response.json();
+
+        // 验证驾驶员数据是否有效
+        this.drivers = this.drivers.filter(
+          driver => typeof driver.latitude === "number" && typeof driver.longitude === "number"
+        );
+
         this.updateMarkers(); // 更新地图上的标记
       } catch (error) {
         console.error("获取驾驶员位置失败:", error);
@@ -330,7 +365,7 @@ export default {
         // 可选：设置定时器定期刷新位置
         setInterval(() => {
           this.fetchDrivers();
-        }, 1000); // 每 10 秒刷新一次
+        }, 1000); // 每 1 秒刷新一次
       })
       .catch((e) => {
         console.log(e);
@@ -455,5 +490,79 @@ export default {
 
 .btn:hover {
   background-color: #0056b3;
+}
+
+.showDriverInfoButton {
+    position: absolute;
+    top: 20%;
+    left: 85%;
+    width: 52px; 
+    height: 52px;
+    border-radius: 50%; 
+    
+    text-align: center;
+    background: rgba(113, 65, 168, 0.5);
+    color: floralwhite;
+    line-height: 52px;
+    cursor: pointer;
+    font-size: 14px;
+    user-select: none;
+    transform: translate(-50%, -50%); 
+}
+.page-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background-color: #f3f4f6;
+  min-height: 100vh;
+}
+
+.page-title {
+  color: #4a4a4a;
+  font-size: 24px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.map-container {
+  position: relative;
+  height: 700px;
+  width: 100%;
+  max-width: 800px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.info-container {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 260px;
+  background-color: #ffffff;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  color: #333;
+  z-index: 10;
+}
+
+.info-container h4 {
+  color: #008a6c;
+  font-weight: 600;
+}
+
+.info-container p {
+  color: #666;
+  line-height: 1.6;
+}
+
+@media (min-width: 1024px) {
+  .map-container {
+    height: 600px;
+  }
 }
 </style>

@@ -1,6 +1,6 @@
 // src/services/loginService.js
+import { useUserStore } from '@/stores/user';
 import axios from "axios";
-
 
 export default {
     data() {
@@ -20,14 +20,16 @@ export default {
          * @throws {null} 如果请求失败或网络错误，在控制台和用户界面显示错误信息
          */
         handleLogin() {
-
-            if(this.username === "" || this.password === ""){
+            if (this.username === "" || this.password === "") {
                 alert('账号或密码不能为空');
                 return;
             }
 
+            // 获取用户 Store
+            const userStore = useUserStore();
+
             // 发送post请求
-            axios.post("http://localhost:8080/api/login", {
+            axios.post("http://localhost:8888/api/login", {
                 username: this.username,
                 password: this.password,
             },
@@ -35,14 +37,18 @@ export default {
                     timeout: 5000, // 设置超时时间，否则axios会一直等待
                 })
                 .then(response => {
-                    if(response.data.code === 200){
-                        console.log("登陆成功：" ,response.data.data);
+                    if (response.data.code === 200) {
+                        console.log("登陆成功：", response.data.data);
+
+                        // 保存用户名到全局状态
+                        userStore.setUserAccount(this.username);
+
                         alert('登录成功');
                         // 跳转界面
                         this.$router.push('/home');
-                    }else{
+                    } else {
                         alert('登录失败');
-                        console.log("登陆失败：" ,response.data.data);
+                        console.log("登陆失败：", response.data.data);
                     }
                 })
                 .catch(error => {
